@@ -57,7 +57,7 @@ export const ChatInterface = () => {
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ChatMessage message={item} />}
+        renderItem={({ item }) => <ChatMessage message={item as { role: string; content: string; status?: 'sending' | 'error'; id: string }} />}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={scrollToBottom}
         onLayout={scrollToBottom}
@@ -124,8 +124,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     backgroundColor: Platform.OS === 'ios' ? '#f0f0f0' : Platform.select({
-      light: '#f0f0f0',
-      dark: '#333333'
+      ios: '#f0f0f0',
+      android: '#f0f0f0',
+      default: '#333333'
     }),
     borderRadius: 20,
     fontSize: 16,
