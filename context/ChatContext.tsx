@@ -63,9 +63,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [messages]);
 
   // Send a message to the Grok API
-  const sendMessage = async (content: string, mode: string): Promise<void> => {
+  // Update the sendMessage function to accept a mode parameter
+  const sendMessage = async (content: string, mode = 'chat'): Promise<void> => {
     if (!content.trim()) return;
-
+  
+    // Create a new user message
     const userMessage: ChatMessage = {
       id: uuidv4(),
       role: 'user',
@@ -73,13 +75,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       timestamp: Date.now(),
       status: 'sending',
     };
-
+  
+    // Add the user message to the chat
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setIsLoading(true);
-
+  
     try {
+      // Encrypt the message before sending to API
       const encryptedContent = encryptMessage(content);
       
+      // Call the x.ai API
       const response = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -91,11 +96,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             { role: 'user', content: encryptedContent }
           ],
           model: 'grok-1',
-          // Add the selected mode to the API request
-          mode: mode.toLowerCase(),
+          mode: mode, // Add the mode parameter
         }),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`API request failed with status ${response.status}: ${errorData}`);
@@ -150,7 +154,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearMessages,
   };
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+  return (
+    <ChatContext.Provider value={value as ChatContextType}>
+      {children}
+    </ChatContext.Provider>
+  );
 };
 
 // Custom hook to use the chat context

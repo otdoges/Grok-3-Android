@@ -1,11 +1,20 @@
 import React, { useRef, useState } from 'react';
-import { View, TextInput, FlatList, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TextInput, FlatList, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { useChat } from '@/context/ChatContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import * as Haptics from 'expo-haptics';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+
+// Define available modes
+const CHAT_MODES = [
+  { id: 'chat', label: 'Chat', icon: 'bubble.left.fill' },
+  { id: 'image', label: 'Create Image', icon: 'photo.fill' },
+  { id: 'search', label: 'DeepSearch', icon: 'magnifyingglass' },
+  { id: 'study', label: 'Study', icon: 'book.fill' },
+];
 
 const ChatMessage = ({ message }: { message: { role: string; content: string; status?: 'sending' | 'error'; id: string } }) => {
   const backgroundColor = useThemeColor(
@@ -15,7 +24,15 @@ const ChatMessage = ({ message }: { message: { role: string; content: string; st
   const textColor = useThemeColor({}, 'text');
 
   return (
-    <View style={[styles.messageContainer, { backgroundColor }]}>
+    <View style={[
+      styles.messageContainer, 
+      { 
+        backgroundColor,
+        alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+        borderTopRightRadius: message.role === 'user' ? 4 : 20,
+        borderTopLeftRadius: message.role === 'user' ? 20 : 4,
+      }
+    ]}>
       <ThemedText style={[styles.messageText, { color: textColor }]}>{message.content}</ThemedText>
       {message.status === 'sending' && (
         <ActivityIndicator size="small" color={Colors.light.tint} style={styles.sendingIndicator} />
@@ -30,6 +47,7 @@ const ChatMessage = ({ message }: { message: { role: string; content: string; st
 export const ChatInterface = () => {
   const { messages, sendMessage, isLoading } = useChat();
   const [inputText, setInputText] = useState('');
+  const [activeMode, setActiveMode] = useState('chat');
   const flatListRef = useRef(null);
 
   const handleSend = async () => {
@@ -37,7 +55,7 @@ export const ChatInterface = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const messageText = inputText;
       setInputText('');
-      await sendMessage(messageText);
+      await sendMessage(messageText, activeMode);
     }
   };
 
@@ -47,12 +65,45 @@ export const ChatInterface = () => {
     }
   };
 
+  const handleModeChange = (modeId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveMode(modeId);
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
       keyboardVerticalOffset={0}
     >
+      {/* Mode selector */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.modeScrollView}
+        contentContainerStyle={styles.modeContainer}
+      >
+        {CHAT_MODES.map((mode) => (
+          <TouchableOpacity
+            key={mode.id}
+            style={[
+              styles.modeButton,
+              activeMode === mode.id && styles.activeModeButton
+            ]}
+            onPress={() => handleModeChange(mode.id)}
+          >
+            <ThemedText 
+              style={[
+                styles.modeButtonText,
+                activeMode === mode.id && styles.activeModeText
+              ]}
+            >
+              {mode.label}
+            </ThemedText>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -62,12 +113,13 @@ export const ChatInterface = () => {
         onContentSizeChange={scrollToBottom}
         onLayout={scrollToBottom}
       />
+      
       <ThemedView style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Message Grok..."
+          placeholder={`Ask anything...`}
           placeholderTextColor="#666"
           multiline
           returnKeyType="send"
@@ -77,12 +129,13 @@ export const ChatInterface = () => {
         {isLoading ? (
           <ActivityIndicator size="small" color={Colors.light.tint} style={styles.sendButton} />
         ) : (
-          <ThemedText
+          <TouchableOpacity 
             onPress={handleSend}
-            style={[styles.sendButton, { opacity: inputText.trim() ? 1 : 0.5 }]}
+            style={[styles.sendButtonContainer, { opacity: inputText.trim() ? 1 : 0.5 }]}
+            disabled={!inputText.trim()}
           >
-            Send
-          </ThemedText>
+            <IconSymbol name="paperplane.fill" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         )}
       </ThemedView>
     </KeyboardAvoidingView>
@@ -93,16 +146,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  modeScrollView: {
+    maxHeight: 50,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+  },
+  modeContainer: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  activeModeButton: {
+    backgroundColor: Colors.light.tint,
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
+  activeModeText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   messageList: {
     paddingHorizontal: 15,
     paddingTop: 10,
+    paddingBottom: 20,
   },
   messageContainer: {
     maxWidth: '80%',
     marginVertical: 5,
     padding: 12,
     borderRadius: 20,
-    alignSelf: 'flex-start',
   },
   messageText: {
     fontSize: 16,
@@ -123,19 +206,20 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: Platform.OS === 'ios' ? '#f0f0f0' : Platform.select({
-      ios: '#f0f0f0',
-      android: '#f0f0f0',
-      default: '#333333'
-    }),
+    backgroundColor: '#f0f0f0',
     borderRadius: 20,
     fontSize: 16,
   },
   sendButton: {
-    color: Colors.light.tint,
-    fontSize: 16,
-    fontWeight: 'bold',
     padding: 10,
+  },
+  sendButtonContainer: {
+    backgroundColor: Colors.light.tint,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sendingIndicator: {
     marginTop: 5,
