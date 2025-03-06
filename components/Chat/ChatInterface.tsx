@@ -39,7 +39,7 @@ const ThinkingIndicator = () => (
 const DeepSearchIndicator = () => (
   <View style={styles.deepSearchContainer}>
     <TypeWriter
-      textArray={[
+      text={[
         'Searching the web',
         'Analyzing results',
         'Processing information',
